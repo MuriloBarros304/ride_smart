@@ -44,7 +44,7 @@ class MinHeap:
             else:
                 idx_to_swap = child_one_idx
 
-            if heap[idx_to_swap] < heap[current_idx]:
+            if heap[idx_to_swap][0] < heap[current_idx][0]: # comparing only distances
                 self.swap(current_idx, idx_to_swap, heap)
                 current_idx = idx_to_swap
                 child_one_idx = current_idx * 2 + 1
@@ -60,7 +60,7 @@ class MinHeap:
             heap: The heap array.
         """
         parent_idx = (current_idx - 1) // 2
-        while current_idx > 0 and heap[current_idx] < heap[parent_idx]:
+        while current_idx > 0 and heap[current_idx][0] < heap[parent_idx][0]: # compating only distances
             self.swap(current_idx, parent_idx, heap)
             current_idx = parent_idx
             parent_idx = (current_idx - 1) // 2
