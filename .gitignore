@@ -10,9 +10,13 @@ __pycache__/
 # C extensions
 *.so
 
+# HTML
+*.html
+
 # Distribution / packaging
 .Python
 build/
+cache/
 develop-eggs/
 dist/
 downloads/

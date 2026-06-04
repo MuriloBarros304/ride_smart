@@ -41,7 +41,7 @@ class Dijkstra:
 
         return vertex, current_min_distance
 
-    def find_shortest_path(self, start, end):
+    def find_shortest_path(self, start, end, on_visit_callback=None):
         """
         Executes Dijkstra's algorithm to find the shortest path between a starting 
         node and a destination node. Terminates early once the destination is reached.
@@ -49,6 +49,8 @@ class Dijkstra:
         Args:
             start (int): The starting node index.
             end (int): The destination node index.
+            on_visit_callback (callable, optional): Callback invoked after a node is
+                visited. Receives (visited_set, current_vertex).
 
         Returns:
             tuple: A tuple containing:
@@ -72,6 +74,9 @@ class Dijkstra:
                 break
 
             visited.add(vertex)
+
+            if on_visit_callback is not None:
+                on_visit_callback(visited, vertex)
 
             for edge in self.edges[vertex]:
                 destination, distance_to_destination = edge

@@ -1,5 +1,5 @@
-from min_heap import MinHeap
-from dijkstra import Dijkstra
+from .min_heap import MinHeap
+from .dijkstra import Dijkstra
 
 class DijkstraHeap(Dijkstra):
     """
