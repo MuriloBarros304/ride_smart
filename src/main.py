@@ -11,7 +11,18 @@ from algorithms.astar import AStar
 from visualization import animate_algorithm
 
 
-def build_adjacency_from_graph(graph, weight_attr="length"):
+def build_adjacency_from_graph(
+        graph: ox.graph.Graph, # type: ignore
+        weight_attr: str="length"
+    ) -> tuple[list[list], dict[int, int], list[int], list[tuple[float, float]]]:
+    """
+    Converts an OSMnx graph into an adjacency list representation suitable for shortest-path algorithms. It also creates a mapping from graph node IDs to their corresponding indices in the adjacency list, and extracts the coordinates of each node for heuristic calculations in A*.
+    Args:
+        graph (ox.graph.Graph): The OSMnx graph to convert.
+        weight_attr (str): The edge attribute to use as the weight for shortest-path calculations. Defaults to "length".
+    Returns:
+        A tuple containing the adjacency list, a mapping from graph node IDs to adjacency indices, a list of graph node IDs corresponding to the adjacency indices, and a list of (latitude, longitude) tuples for each node in the graph.
+    """
     nodes = list(graph.nodes)
     node_to_idx = {node_id: idx for idx, node_id in enumerate(nodes)}
     coords = []
@@ -35,7 +46,24 @@ def build_adjacency_from_graph(graph, weight_attr="length"):
     return adjacency, node_to_idx, nodes, coords
 
 
-def generate_random_points(origin_lat, origin_lon, radius_m, count, seed=None):
+def generate_random_points(
+        origin_lat: float,
+        origin_lon: float,
+        radius_m: float,
+        count: int,
+        seed=None
+    ) -> list[tuple[float, float]]:
+    """
+    Generates random points within a specified radius (in meters) around an origin point defined by latitude and longitude. The points are uniformly distributed within the circular area defined by the radius.
+    Args:
+        origin_lat (float): The latitude of the origin point.
+        origin_lon (float): The longitude of the origin point.
+        radius_m (float): The radius in meters within which to generate random points.
+        count (int): The number of random points to generate.
+        seed (int, optional): A random seed for reproducibility. Defaults to None.
+    Returns:
+        A list of tuples, where each tuple contains the latitude and longitude of a generated random point.
+    """
     rng = random.Random(seed)
     points = []
 
@@ -53,7 +81,18 @@ def generate_random_points(origin_lat, origin_lon, radius_m, count, seed=None):
     return points
 
 
-def points_to_nodes(graph, points):
+def points_to_nodes(
+        graph: ox.graph.Graph, # type: ignore
+        points: list[tuple[float, float]]
+    ) -> list[int]:
+    """
+    Points the nearest graph nodes for a list of latitude and longitude coordinates.
+    Args:
+        graph (ox.graph.Graph): The OSMnx graph to query.
+        points (list[tuple[float, float]]): A list of (latitude, longitude) tuples representing the points to map to graph nodes.
+    Returns:
+        A list of graph node IDs corresponding to the nearest nodes for each input point.
+    """
     nodes = []
     for lat, lon in points:
         node = ox.distance.nearest_nodes(graph, X=lon, Y=lat)
@@ -61,7 +100,21 @@ def points_to_nodes(graph, points):
     return nodes
 
 
-def select_best_boarding_node(candidate_nodes, dest_idx, node_to_idx, solver):
+def select_best_boarding_node(
+        candidate_nodes: list[int],
+        node_to_idx: dict[int, int],
+        solver: Dijkstra | DijkstraHeap | AStar, dest_idx: int
+    ) -> tuple[int | None, float, list[int]]:
+    """
+    Evaluates each candidate boarding node by computing the shortest path distance to the destination using the provided solver instance.
+    Args:
+        candidate_nodes (list[int]): A list of candidate boarding node IDs.
+        node_to_idx (dict[int, int]): A mapping from graph node IDs to their corresponding indices in the adjacency list.
+        solver (Dijkstra | DijkstraHeap | AStar): An instance of the shortest-path algorithm to use for distance calculations.
+        dest_idx (int): The index of the destination node in the adjacency list.
+    Returns:
+        A tuple containing the best boarding node ID (or None if no valid candidates), the shortest distance to the destination, and the path from the boarding node to the destination as a list of node indices.
+    """
     best_node = None
     best_distance = float("inf")
     best_path = []
@@ -81,7 +134,22 @@ def select_best_boarding_node(candidate_nodes, dest_idx, node_to_idx, solver):
     return best_node, best_distance, best_path
 
 
-def create_solver(algorithm_name, adjacency, coordinates=None):
+def create_solver(
+        algorithm_name: str,
+        adjacency: list[list],
+        coordinates: list(tuple[float, float]) | None=None
+    ) -> Dijkstra | DijkstraHeap | AStar:
+    """
+    Factory function to create a solver instance based on the specified algorithm name.
+    Args:
+        algorithm_name (str): The name of the algorithm to use.
+        adjacency (list[list]): The adjacency list representing the graph.
+        coordinates (tuple[int], optional): The coordinates of the nodes, required for A*.
+    Returns:
+        An instance of the specified algorithm class.
+    Raises:
+        ValueError: If an unsupported algorithm name is provided.
+    """
     if algorithm_name == "dijkstra":
         return Dijkstra(adjacency)
     if algorithm_name == "dijkstra_heap":
@@ -91,7 +159,14 @@ def create_solver(algorithm_name, adjacency, coordinates=None):
     raise ValueError(f"Unsupported algorithm: {algorithm_name}")
 
 
-def load_graph(args):
+def load_graph(args: argparse.Namespace) -> ox.graph.Graph: # type: ignore
+    """
+    Loads a graph based on the provided command-line arguments. The graph can be loaded from a local .graphml file, downloaded using a place name, or dynamically generated around the midpoint between the origin and destination coordinates.
+    Args:
+        args (argparse.Namespace): The command-line arguments containing the graph loading parameters.
+    Returns:
+        An OSMnx graph object representing the loaded graph.
+    """
     if args.graphml:
         return ox.load_graphml(args.graphml)
 
@@ -116,7 +191,13 @@ def load_graph(args):
     )
 
 
-def save_animation(html, output_path):
+def save_animation(html, output_path: str) -> None:
+    """
+    Saves the generated HTML animation to the specified output path, creating any necessary directories along the way.
+    Args:
+        html (IPython.display.HTML): The HTML content to save.
+        output_path (str): The file path where the HTML content should be saved.
+    """
     output_dir = os.path.dirname(output_path)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
@@ -213,7 +294,7 @@ def main():
     graph = load_graph(args)
     graph = ox.distance.add_edge_lengths(graph)
 
-    adjacency, node_to_idx, idx_to_node = build_adjacency_from_graph(graph)
+    adjacency, node_to_idx, idx_to_node, coords = build_adjacency_from_graph(graph)
 
     origin_node = ox.distance.nearest_nodes(graph, X=args.origin_lon, Y=args.origin_lat)
     dest_node = ox.distance.nearest_nodes(graph, X=args.dest_lon, Y=args.dest_lat)
@@ -231,7 +312,7 @@ def main():
     if not candidate_nodes:
         raise RuntimeError("No boarding candidates were generated.")
 
-    solver = create_solver(args.algorithm, adjacency)
+    solver = create_solver(args.algorithm, adjacency, coords)
     dest_idx = node_to_idx[dest_node]
 
     candidate_indices = [node_to_idx[node] for node in candidate_nodes]
