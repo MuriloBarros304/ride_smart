@@ -7,12 +7,19 @@ import osmnx as ox
 
 from algorithms.dijkstra import Dijkstra
 from algorithms.dijkstra_heap import DijkstraHeap
+from algorithms.astar import AStar
 from visualization import animate_algorithm
 
 
 def build_adjacency_from_graph(graph, weight_attr="length"):
     nodes = list(graph.nodes)
     node_to_idx = {node_id: idx for idx, node_id in enumerate(nodes)}
+    coords = []
+    for node_id in nodes:
+        lat = graph.nodes[node_id]['y']
+        lon = graph.nodes[node_id]['x']
+        coords.append((lat, lon))
+
     edge_weights = {}
 
     for u, v, data in graph.edges(data=True):
@@ -25,7 +32,7 @@ def build_adjacency_from_graph(graph, weight_attr="length"):
     for (u_idx, v_idx), weight in edge_weights.items():
         adjacency[u_idx].append((v_idx, weight))
 
-    return adjacency, node_to_idx, nodes
+    return adjacency, node_to_idx, nodes, coords
 
 
 def generate_random_points(origin_lat, origin_lon, radius_m, count, seed=None):
@@ -74,11 +81,13 @@ def select_best_boarding_node(candidate_nodes, dest_idx, node_to_idx, solver):
     return best_node, best_distance, best_path
 
 
-def create_solver(algorithm_name, adjacency):
+def create_solver(algorithm_name, adjacency, coordinates=None):
     if algorithm_name == "dijkstra":
         return Dijkstra(adjacency)
     if algorithm_name == "dijkstra_heap":
         return DijkstraHeap(adjacency)
+    if algorithm_name == "astar":
+        return AStar(adjacency, coordinates)
     raise ValueError(f"Unsupported algorithm: {algorithm_name}")
 
 
@@ -92,7 +101,8 @@ def load_graph(args):
     mid_lat = (args.origin_lat + args.dest_lat) / 2
     mid_lon = (args.origin_lon + args.dest_lon) / 2
 
-    dist_degrees = math.sqrt((args.origin_lat - args.dest_lat)**2 + (args.origin_lon - args.dest_lon)**2)
+    dist_degrees = math.sqrt((args.origin_lat - args.dest_lat)**2 \
+        + (args.origin_lon - args.dest_lon)**2)
     dist_meters = dist_degrees * 111320.0
     
     dynamic_radius = (dist_meters / 2) + args.walk_radius

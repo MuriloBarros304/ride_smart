@@ -1,8 +1,8 @@
 # RideSmart
 
-Projeto final para modelagem e análise de rotas urbanas com grafos. O foco é simular
-um cenário de mobilidade urbana com ponto de origem, destino e escolha de ponto de
-embarque dentro de um raio de caminhada.
+Projeto final para modelagem e análise de rotas urbanas com grafos. O foco
+ é simular um cenário de mobilidade urbana com ponto de origem, destino e
+ escolha de ponto de embarque dentro de um raio de caminhada.
 
 ## Estrutura
 
@@ -25,8 +25,8 @@ pip install -r requirements.txt
 
 ## Uso
 
-O script principal gera pontos aleatórios dentro de um raio de caminhada, escolhe o
-melhor ponto de embarque e gera uma animação do algoritmo selecionado.
+O script principal gera pontos aleatórios dentro de um raio de caminhada,
+ escolhe o melhor ponto de embarque e gera uma animação do algoritmo selecionado.
 
 Exemplo usando um lugar para baixar o grafo:
 
@@ -38,7 +38,8 @@ python src/main.py \
     --algorithm dijkstra_heap \
     --output data/processed/dijkstra_animation.html
 ```
-Se usar `--place` toda a cidade será exibida, use latitude e longitude para melhores visualizações.
+Se usar `--place` toda a cidade será exibida, use latitude e longitude para
+ melhores visualizações.
 
 Também é possível usar um arquivo GraphML local:
 
@@ -50,7 +51,7 @@ python3 src/main.py --graphml caminho/para/grafo.graphml
 
 - Dijkstra simples
 - Dijkstra com heap
-
+- A*
 ...
 
 ## Saídas
@@ -60,7 +61,7 @@ python3 src/main.py --graphml caminho/para/grafo.graphml
 ## Pendências
 
 - Simular trânsito e congestionamentos em horário de pico para rodovias
-- Implementar A* e outro algoritmo
-- Implementar testes para CI/CD
-- Ver se é possível adicionar alguma heirística para otimizar a geração de candidatos
+- Implementar um outro algoritmo de escolha do grupo
+- Implementar testes unitários
+- Ver se é possível adicionar alguma heurística para otimizar a geração de candidatos
 - Melhorar desempenho
