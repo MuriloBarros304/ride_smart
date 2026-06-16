@@ -36,6 +36,7 @@ python src/main.py \
     --dest-lat -5.8121992 --dest-lon -35.2080217 \
     --walk-radius 100 --candidates 10\
     --algorithm dijkstra_heap \
+    --min-angle 25 \
     --output data/processed/dijkstra_animation.html
 ```
 Se usar `--place` toda a cidade será exibida, use latitude e longitude para
@@ -63,5 +64,4 @@ python3 src/main.py --graphml caminho/para/grafo.graphml
 - Simular trânsito e congestionamentos em horário de pico para rodovias
 - Implementar um outro algoritmo de escolha do grupo
 - Implementar testes unitários
-- Ver se é possível adicionar alguma heurística para otimizar a geração de candidatos
 - Melhorar desempenho

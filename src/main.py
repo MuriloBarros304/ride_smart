@@ -8,6 +8,7 @@ import osmnx as ox
 from algorithms.dijkstra import Dijkstra
 from algorithms.dijkstra_heap import DijkstraHeap
 from algorithms.astar import AStar
+from heuristics import CandidateHeuristics
 from visualization import animate_algorithm
 
 
@@ -51,6 +52,7 @@ def generate_random_points(
         origin_lon: float,
         radius_m: float,
         count: int,
+        min_angle_degrees: float,
         seed=None
     ) -> list[tuple[float, float]]:
     """
@@ -66,17 +68,32 @@ def generate_random_points(
     """
     rng = random.Random(seed)
     points = []
+    heuristic_filter = CandidateHeuristics(origin_lat, origin_lon, min_angle_degrees)
 
-    meters_per_degree_lat = 111_320.0
-    lat_rad = math.radians(origin_lat)
-    meters_per_degree_lon = max(1.0, math.cos(lat_rad) * meters_per_degree_lat)
+    # Aproximação: 1 grau de latitude é aproximadamente 111.320 metros, e a longitude é ajustada pela latitude da origem.
+    meters_per_degree_lat = 111320.0
+    meters_per_degree_lon = 111320.0 * math.cos(math.radians(origin_lat))
 
-    for _ in range(count):
+    # Gera mais pontos do que o necessário para garantir que teremos `count`
+    # pontos válidos após a aplicação da heurística.
+    max_attempts = count * 5
+
+    while len(points) < count and max_attempts > 0:
         angle = rng.random() * 2 * math.pi
         distance = radius_m * math.sqrt(rng.random())
         delta_lat = (distance * math.cos(angle)) / meters_per_degree_lat
         delta_lon = (distance * math.sin(angle)) / meters_per_degree_lon
-        points.append((origin_lat + delta_lat, origin_lon + delta_lon))
+        
+        point_lat = origin_lat + delta_lat
+        point_lon = origin_lon + delta_lon
+
+        if heuristic_filter.is_valid_candidate(point_lat, point_lon):
+            points.append((point_lat, point_lon))
+        
+        max_attempts -= 1
+
+    if len(points) < count:
+        print(f"Warning: Only found {len(points)} valid candidates after filtering.")
 
     return points
 
@@ -137,7 +154,7 @@ def select_best_boarding_node(
 def create_solver(
         algorithm_name: str,
         adjacency: list[list],
-        coordinates: list(tuple[float, float]) | None=None
+        coordinates: list(tuple[float, float]) | None=None # type: ignore
     ) -> Dijkstra | DijkstraHeap | AStar:
     """
     Factory function to create a solver instance based on the specified algorithm name.
@@ -268,7 +285,7 @@ def parse_args():
     parser.add_argument(
         "--algorithm",
         "-a",
-        choices=["dijkstra", "dijkstra_heap"],
+        choices=["dijkstra", "dijkstra_heap", "astar"],
         default="dijkstra_heap",
         help="Shortest-path algorithm to visualize.",
     )
@@ -277,6 +294,12 @@ def parse_args():
         "-o",
         default="data/processed/dijkstra_animation.html",
         help="Path to write the HTML animation.",
+    )
+    parser.add_argument(
+        "--min-angle",
+        type=float,
+        default=15.0,
+        help="Minimum angular separation in degrees for candidate points. Set to 0 to disable.",
     )
     parser.add_argument(
         "--seed",
@@ -305,6 +328,7 @@ def main():
         args.walk_radius,
         args.candidates,
         seed=args.seed,
+        min_angle_degrees=args.min_angle
     )
     candidate_nodes = points_to_nodes(graph, random_points)
     candidate_nodes = list(dict.fromkeys(candidate_nodes))
