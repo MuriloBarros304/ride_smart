@@ -53,8 +53,9 @@ def generate_random_points(
         radius_m: float,
         count: int,
         min_angle_degrees: float,
+        graph: ox.graph.Graph,
         seed=None
-    ) -> list[tuple[float, float]]:
+    ) -> list[int]:
     """
     Generates random points within a specified radius (in meters) around an origin point defined by latitude and longitude. The points are uniformly distributed within the circular area defined by the radius.
     Args:
@@ -67,7 +68,17 @@ def generate_random_points(
         A list of tuples, where each tuple contains the latitude and longitude of a generated random point.
     """
     rng = random.Random(seed)
-    points = []
+    valid_nodes = []
+
+    if min_angle_degrees <= 0:
+        # Fator de segurança (50% do limite teórico) para garantir que
+        # a aleatoriedade e os limites da rua não travem o loop
+        safety_factor = 0.5
+        theoretical_max = 360.0 / count
+        min_angle_degrees = theoretical_max * safety_factor
+        
+        print(f"Usando ângulo mínimo ótimo entre os pontos: {min_angle_degrees:.1f}°")
+
     heuristic_filter = CandidateHeuristics(origin_lat, origin_lon, min_angle_degrees)
 
     # Aproximação: 1 grau de latitude é aproximadamente 111.320 metros, e a longitude é ajustada pela latitude da origem.
@@ -78,7 +89,7 @@ def generate_random_points(
     # pontos válidos após a aplicação da heurística.
     max_attempts = count * 5
 
-    while len(points) < count and max_attempts > 0:
+    while len(valid_nodes) < count and max_attempts > 0:
         angle = rng.random() * 2 * math.pi
         distance = radius_m * math.sqrt(rng.random())
         delta_lat = (distance * math.cos(angle)) / meters_per_degree_lat
@@ -87,34 +98,19 @@ def generate_random_points(
         point_lat = origin_lat + delta_lat
         point_lon = origin_lon + delta_lon
 
-        if heuristic_filter.is_valid_candidate(point_lat, point_lon):
-            points.append((point_lat, point_lon))
+        node_id = ox.distance.nearest_nodes(graph, X=point_lon, Y=point_lat)
+        real_lon = graph.nodes[node_id]['x']
+        real_lat = graph.nodes[node_id]['y']
+
+        if heuristic_filter.is_valid_candidate(real_lat, real_lon):
+            valid_nodes.append((node_id))
         
         max_attempts -= 1
 
-    if len(points) < count:
-        print(f"Warning: Only found {len(points)} valid candidates after filtering.")
+    if len(valid_nodes) < count:
+        print(f"Aviso: Apenas {len(valid_nodes)} nós válidos foram encontrados com o ângulo mínimo especificado")
 
-    return points
-
-
-def points_to_nodes(
-        graph: ox.graph.Graph, # type: ignore
-        points: list[tuple[float, float]]
-    ) -> list[int]:
-    """
-    Points the nearest graph nodes for a list of latitude and longitude coordinates.
-    Args:
-        graph (ox.graph.Graph): The OSMnx graph to query.
-        points (list[tuple[float, float]]): A list of (latitude, longitude) tuples representing the points to map to graph nodes.
-    Returns:
-        A list of graph node IDs corresponding to the nearest nodes for each input point.
-    """
-    nodes = []
-    for lat, lon in points:
-        node = ox.distance.nearest_nodes(graph, X=lon, Y=lat)
-        nodes.append(node)
-    return nodes
+    return valid_nodes
 
 
 def select_best_boarding_node(
@@ -199,7 +195,7 @@ def load_graph(args: argparse.Namespace) -> ox.graph.Graph: # type: ignore
     
     dynamic_radius = (dist_meters / 2) + args.walk_radius
 
-    print(f"Loading dynamic map at midpoint with {dynamic_radius:.0f}m radius...")
+    print(f"Espaço de busca carregado: círculo na origem com raio {dynamic_radius:.0f}m\n")
     
     return ox.graph_from_point(
         (mid_lat, mid_lon),
@@ -298,7 +294,7 @@ def parse_args():
     parser.add_argument(
         "--min-angle",
         type=float,
-        default=15.0,
+        default=0.0,
         help="Minimum angular separation in degrees for candidate points. Set to 0 to disable.",
     )
     parser.add_argument(
@@ -327,11 +323,12 @@ def main():
         args.origin_lon,
         args.walk_radius,
         args.candidates,
+        graph=graph,
+        min_angle_degrees=args.min_angle,
         seed=args.seed,
-        min_angle_degrees=args.min_angle
     )
-    candidate_nodes = points_to_nodes(graph, random_points)
-    candidate_nodes = list(dict.fromkeys(candidate_nodes))
+    
+    candidate_nodes = list(dict.fromkeys(random_points))
 
     if not candidate_nodes:
         raise RuntimeError("No boarding candidates were generated.")

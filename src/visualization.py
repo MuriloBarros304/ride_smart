@@ -15,6 +15,8 @@ def _multi_algorithm_generator_wrapper(solver_instance, candidate_indices, end_i
     best_overall_distance = float('inf')
     best_overall_path = []
 
+    history_paths = []
+
     for candidate_idx in candidate_indices:
         frame_counter = 0
 
@@ -27,7 +29,8 @@ def _multi_algorithm_generator_wrapper(solver_instance, candidate_indices, end_i
                     "visited": visited_set.copy(),
                     "head": current_vertex,
                     "current_path": [],
-                    "best_path": best_overall_path
+                    "best_path": best_overall_path,
+                    "history_paths": list(history_paths)
                 })
             frame_counter += 1
 
@@ -40,14 +43,17 @@ def _multi_algorithm_generator_wrapper(solver_instance, candidate_indices, end_i
             best_overall_path = path
 
         # Pause: show the path found by this candidate for a few frames before the next search
-        for _ in range(15): 
+        for _ in range(15):
             frames.append({
                 "state": "found",
                 "visited": set(), # Clears the red dot spread
                 "head": None,
                 "current_path": path,
-                "best_path": best_overall_path
+                "best_path": best_overall_path,
+                "history_paths": list(history_paths)
             })
+        if path:
+            history_paths.append(path)
 
     # Final Pause: show only the absolute best path found across all candidates
     for _ in range(30):
@@ -56,7 +62,8 @@ def _multi_algorithm_generator_wrapper(solver_instance, candidate_indices, end_i
             "visited": set(),
             "head": None,
             "current_path": [],
-            "best_path": best_overall_path
+            "best_path": best_overall_path,
+            "history_paths": list(history_paths)
         })
 
     for frame in frames:
@@ -91,7 +98,6 @@ def animate_algorithm(G, solver_instance, origin_graph_node, dest_graph_node, de
     ax.scatter([origin_x], [origin_y], c='#FFFFFF', s=80, zorder=10, marker='*', label='Origem Real')
     ax.scatter([dest_x], [dest_y], c='#00BFFF', s=100, zorder=10, marker='X', label='Destino')
 
-    # Plota os candidatos
     candidate_graph_nodes = [index_to_node[idx] for idx in candidate_indices]
     cx = [G.nodes[n]['x'] for n in candidate_graph_nodes]
     cy = [G.nodes[n]['y'] for n in candidate_graph_nodes]
@@ -99,6 +105,11 @@ def animate_algorithm(G, solver_instance, origin_graph_node, dest_graph_node, de
 
     # 3. Setup dynamic scatter objects and line paths
     scat_visited = ax.scatter([], [], c='#FF4500', s=15, alpha=0.5, zorder=5)
+    
+    history_lines = [
+        ax.plot([], [], c='#FFD700', linewidth=2, alpha=0.5, zorder=6)[0]
+        for _ in range(len(candidate_indices))
+    ]
     
     current_path_line, = ax.plot([], [], c='cyan', linewidth=2, zorder=7, alpha=0.8)
     best_path_line, = ax.plot([], [], c='#00FF00', linewidth=3, zorder=8)
@@ -128,10 +139,18 @@ def animate_algorithm(G, solver_instance, origin_graph_node, dest_graph_node, de
             px, py = get_coords(frame_data["current_path"])
             current_path_line.set_data(px, py)
 
+        hist_paths = frame_data.get("history_paths", [])
+        for i, h_line in enumerate(history_lines):
+            if i < len(hist_paths):
+                hx, hy = get_coords(hist_paths[i])
+                h_line.set_data(hx, hy)
+            else:
+                h_line.set_data([], [])
+
         bx, by = get_coords(frame_data["best_path"])
         best_path_line.set_data(bx, by)
 
-        return scat_visited, current_path_line, best_path_line
+        return scat_visited, current_path_line, best_path_line, *history_lines
 
     ani = animation.FuncAnimation(
         fig, update, frames=algo_generator, blit=True, repeat=False, interval=30, cache_frame_data=False

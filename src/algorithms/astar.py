@@ -1,5 +1,5 @@
 import math
-from min_heap import MinHeap
+from .min_heap import MinHeap
 
 class AStar:
     """
