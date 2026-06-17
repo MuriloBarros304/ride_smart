@@ -28,14 +28,14 @@ class DijkstraHeap(Dijkstra):
             if vertex in visited:
                 continue
 
-            # Early Exit: found the destination.
-            if vertex == end:
-                break
-
             visited.add(vertex)
 
             if on_visit_callback is not None:
                 on_visit_callback(visited, vertex)
+
+            # Early exit
+            if vertex == end:
+                break
 
             for edge in self.edges[vertex]:
                 destination, distance_to_destination = edge

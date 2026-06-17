@@ -68,15 +68,17 @@ class Dijkstra:
         while len(visited) != self.number_of_vertices:
             vertex, current_min_distance = self._get_vertex_with_min_distance(min_distances, visited)
 
-            # Early exit: Stop if the remaining nodes are unreachable OR 
-            # if we have just found the shortest path to our target destination.
-            if current_min_distance == float("inf") or vertex == end:
+            if current_min_distance == float("inf"):
                 break
 
             visited.add(vertex)
 
             if on_visit_callback is not None:
                 on_visit_callback(visited, vertex)
+                
+            # Early exit
+            if vertex == end:
+                break
 
             for edge in self.edges[vertex]:
                 destination, distance_to_destination = edge
