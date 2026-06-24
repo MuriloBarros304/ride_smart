@@ -121,7 +121,7 @@ def animate_algorithm(G, solver_instance, origin_graph_node, dest_graph_node, de
         graph_nodes = [index_to_node[idx] for idx in path_indices]
         return [G.nodes[n]['x'] for n in graph_nodes], [G.nodes[n]['y'] for n in graph_nodes]
 
-    algo_generator = _multi_algorithm_generator_wrapper(solver_instance, candidate_indices, dest_idx, skip_frames=15)
+    algo_generator = _multi_algorithm_generator_wrapper(solver_instance, candidate_indices, dest_idx, skip_frames=200)
 
     def update(frame_data):
         state = frame_data["state"]

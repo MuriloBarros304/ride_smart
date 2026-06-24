@@ -2,6 +2,7 @@ import argparse
 import math
 import os
 import random
+import networkx as nx
 
 import osmnx as ox
 
@@ -13,13 +14,13 @@ from visualization import animate_algorithm
 
 
 def build_adjacency_from_graph(
-        graph: ox.graph.Graph, # type: ignore
+        graph: nx.MultiDiGraph, # type: ignore
         weight_attr: str="length"
     ) -> tuple[list[list], dict[int, int], list[int], list[tuple[float, float]]]:
     """
     Converts an OSMnx graph into an adjacency list representation suitable for shortest-path algorithms. It also creates a mapping from graph node IDs to their corresponding indices in the adjacency list, and extracts the coordinates of each node for heuristic calculations in A*.
     Args:
-        graph (ox.graph.Graph): The OSMnx graph to convert.
+        graph (nx.MultiDiGraph): The OSMnx graph to convert.
         weight_attr (str): The edge attribute to use as the weight for shortest-path calculations. Defaults to "length".
     Returns:
         A tuple containing the adjacency list, a mapping from graph node IDs to adjacency indices, a list of graph node IDs corresponding to the adjacency indices, and a list of (latitude, longitude) tuples for each node in the graph.
@@ -53,7 +54,7 @@ def generate_random_points(
         radius_m: float,
         count: int,
         min_angle_degrees: float,
-        graph: ox.graph.Graph,
+        graph: nx.MultiDiGraph,
         seed=None
     ) -> list[int]:
     """
@@ -150,7 +151,7 @@ def select_best_boarding_node(
 def create_solver(
         algorithm_name: str,
         adjacency: list[list],
-        coordinates: list(tuple[float, float]) | None=None # type: ignore
+        coordinates: list[tuple[float, float]] | None=None # type: ignore
     ) -> Dijkstra | DijkstraHeap | AStar:
     """
     Factory function to create a solver instance based on the specified algorithm name.
@@ -172,7 +173,7 @@ def create_solver(
     raise ValueError(f"Unsupported algorithm: {algorithm_name}")
 
 
-def load_graph(args: argparse.Namespace) -> ox.graph.Graph: # type: ignore
+def load_graph(args: argparse.Namespace) -> nx.MultiDiGraph: # type: ignore
     """
     Loads a graph based on the provided command-line arguments. The graph can be loaded from a local .graphml file, downloaded using a place name, or dynamically generated around the midpoint between the origin and destination coordinates.
     Args:
@@ -218,6 +219,44 @@ def save_animation(html, output_path: str) -> None:
     html_content = html.data if hasattr(html, "data") else str(html)
     with open(output_path, "w", encoding="utf-8") as handle:
         handle.write(html_content)
+
+
+def apply_traffic_model(graph: nx.MultiDiGraph, traffic_mode: str) -> nx.MultiDiGraph:
+    """
+    Calcula o tempo de viagem base e adiciona o atraso estocástico.
+    """
+    graph = ox.routing.add_edge_speeds(graph)
+    graph = ox.routing.add_edge_travel_times(graph)
+
+    for u, v, key, data in graph.edges(keys=True, data=True):
+        base_time_minutos = data['travel_time'] / 60.0
+
+        highway_type = data.get('highway', '')
+        if isinstance(highway_type, list): 
+            highway_type = highway_type[0]
+            
+        is_highway = highway_type in ['motorway', 'motorway_link', 'trunk', 'trunk_link', 'primary']
+
+        fator_atraso = 0.05 
+        
+        if traffic_mode == "peak":
+            fator_atraso *= 5.0
+            
+        if is_highway:
+            fator_atraso *= 1.5
+        
+        media_x = base_time_minutos * fator_atraso
+        
+        if media_x > 0:
+            x = random.expovariate(1.0 / media_x)
+            x = min(x, 120.0) 
+        else:
+            x = 0
+            
+        novo_tempo_segundos = (base_time_minutos + x) * 60.0
+        data['travel_time_with_traffic'] = novo_tempo_segundos
+
+    return graph
 
 
 def parse_args():
@@ -304,6 +343,13 @@ def parse_args():
         default=42,
         help="Random seed for candidate generation.",
     )
+    parser.add_argument(
+        "--traffic",
+        "-t",
+        choices=["off", "normal", "peak"],
+        default="off",
+        help="Define o modelo de trânsito: 'off' (sem trânsito, rota mais curta), 'normal' (trânsito leve) ou 'peak' (horário de pico).",
+    )
     return parser.parse_args()
 
 
@@ -313,7 +359,18 @@ def main():
     graph = load_graph(args)
     graph = ox.distance.add_edge_lengths(graph)
 
-    adjacency, node_to_idx, idx_to_node, coords = build_adjacency_from_graph(graph)
+    if args.traffic != "off":
+        print(f"Aplicando modelo estocástico de trânsito (Modo: {args.traffic})...")
+        graph = apply_traffic_model(graph, traffic_mode=args.traffic)
+        peso_escolhido = "travel_time_with_traffic"
+    else:
+        print("Trânsito desativado. Calculando a rota física mais curta...")
+        peso_escolhido = "length"
+
+    adjacency, node_to_idx, idx_to_node, coords = build_adjacency_from_graph(
+        graph, 
+        weight_attr=peso_escolhido
+    )
 
     origin_node = ox.distance.nearest_nodes(graph, X=args.origin_lon, Y=args.origin_lat)
     dest_node = ox.distance.nearest_nodes(graph, X=args.dest_lon, Y=args.dest_lat)
@@ -351,10 +408,52 @@ def main():
     
     save_animation(html, args.output)
 
-    print(f"Origin node: {origin_node}")
-    print(f"Destination node: {dest_node}")
-    print(f"Valid Candidates found: {len(candidate_nodes)}")
-    print(f"Animation saved to: {args.output}")
+    best_node, best_weight, best_path = select_best_boarding_node(
+        candidate_nodes, node_to_idx, solver, dest_idx
+    )
+
+    total_length_m = 0.0
+    total_base_time_s = 0.0
+    total_traffic_time_s = 0.0
+
+    if best_path:
+        for i in range(len(best_path) - 1):
+            u_node = idx_to_node[best_path[i]]
+            v_node = idx_to_node[best_path[i+1]]
+            
+            edge_data = graph.get_edge_data(u_node, v_node)[0] 
+            
+            total_length_m += edge_data.get('length', 0.0)
+            
+            base_time = edge_data.get('travel_time', edge_data.get('length', 0.0) / 11.11)
+            total_base_time_s += base_time
+            
+            if args.traffic != "off":
+                total_traffic_time_s += edge_data.get('travel_time_with_traffic', base_time)
+            else:
+                total_traffic_time_s += base_time
+
+    print("\n" + "="*40)
+    print("RESUMO DA CORRIDA")
+    print("="*40)
+    print(f"Origem (Nó):  {origin_node}")
+    print(f"Destino (Nó): {dest_node}")
+    print(f"Candidatos Avaliados: {len(candidate_nodes)}")
+    
+    if best_node:
+        print(f"Melhor Embarque:      {best_node}")
+        print(f"Distância Total:      {total_length_m / 1000:.2f} km")
+        print(f"Tempo Normal (Ideal): {total_base_time_s / 60:.1f} minutos")
+        
+        if args.traffic != "off":
+            print(f"Tempo c/ Trânsito:    {total_traffic_time_s / 60:.1f} minutos")
+            atraso = (total_traffic_time_s - total_base_time_s) / 60
+            print(f"Atraso da Rota:       +{atraso:.1f} minutos")
+    else:
+        print("Nenhuma rota válida encontrada.")
+        
+    print(f"Animação Salva em:    {args.output}")
+    print("="*40 + "\n")
 
 if __name__ == "__main__":
     main()
