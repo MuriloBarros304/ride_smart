@@ -61,6 +61,7 @@ O tempo extra de engarrafamento de cada rua não é fixo; ele é sorteado usando
 - Dijkstra simples
 - Dijkstra com heap
 - A*
+- SPFA
 
 ## Saídas
 
@@ -69,6 +70,5 @@ O tempo extra de engarrafamento de cada rua não é fixo; ele é sorteado usando
 
 ## Pendências
 
-- Implementar um outro algoritmo de escolha do grupo
 - Implementar testes unitários
 - Melhorar desempenho

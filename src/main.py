@@ -9,6 +9,7 @@ import osmnx as ox
 from algorithms.dijkstra import Dijkstra
 from algorithms.dijkstra_heap import DijkstraHeap
 from algorithms.astar import AStar
+from algorithms.spfa import SPFA
 from heuristics import CandidateHeuristics
 from visualization import animate_algorithm
 
@@ -117,14 +118,14 @@ def generate_random_points(
 def select_best_boarding_node(
         candidate_nodes: list[int],
         node_to_idx: dict[int, int],
-        solver: Dijkstra | DijkstraHeap | AStar, dest_idx: int
+        solver: Dijkstra | DijkstraHeap | AStar | SPFA, dest_idx: int
     ) -> tuple[int | None, float, list[int]]:
     """
     Evaluates each candidate boarding node by computing the shortest path distance to the destination using the provided solver instance.
     Args:
         candidate_nodes (list[int]): A list of candidate boarding node IDs.
         node_to_idx (dict[int, int]): A mapping from graph node IDs to their corresponding indices in the adjacency list.
-        solver (Dijkstra | DijkstraHeap | AStar): An instance of the shortest-path algorithm to use for distance calculations.
+        solver (Dijkstra | DijkstraHeap | AStar | SPFA): An instance of the shortest-path algorithm to use for distance calculations.
         dest_idx (int): The index of the destination node in the adjacency list.
     Returns:
         A tuple containing the best boarding node ID (or None if no valid candidates), the shortest distance to the destination, and the path from the boarding node to the destination as a list of node indices.
@@ -152,7 +153,7 @@ def create_solver(
         algorithm_name: str,
         adjacency: list[list],
         coordinates: list[tuple[float, float]] | None=None # type: ignore
-    ) -> Dijkstra | DijkstraHeap | AStar:
+    ) -> Dijkstra | DijkstraHeap | AStar | SPFA:
     """
     Factory function to create a solver instance based on the specified algorithm name.
     Args:
@@ -170,6 +171,8 @@ def create_solver(
         return DijkstraHeap(adjacency)
     if algorithm_name == "astar":
         return AStar(adjacency, coordinates)
+    if algorithm_name == "spfa":
+        return SPFA(adjacency)
     raise ValueError(f"Unsupported algorithm: {algorithm_name}")
 
 
@@ -320,7 +323,7 @@ def parse_args():
     parser.add_argument(
         "--algorithm",
         "-a",
-        choices=["dijkstra", "dijkstra_heap", "astar"],
+        choices=["dijkstra", "dijkstra_heap", "astar", "spfa"],
         default="dijkstra_heap",
         help="Shortest-path algorithm to visualize.",
     )
