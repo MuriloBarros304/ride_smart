@@ -240,10 +240,10 @@ def apply_traffic_model(graph: nx.MultiDiGraph, traffic_mode: str) -> nx.MultiDi
         fator_atraso = 0.05 
         
         if traffic_mode == "peak":
-            fator_atraso *= 5.0
+            fator_atraso *= 15.0
             
         if is_highway:
-            fator_atraso *= 1.5
+            fator_atraso *= 4.0
         
         media_x = base_time_minutos * fator_atraso
         

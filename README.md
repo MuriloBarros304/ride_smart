@@ -54,7 +54,18 @@ O projeto possui um modelo probabilístico para simular as condições reais de 
 - **`--traffic normal`**: O sistema calcula a **rota mais rápida**. O peso passa a ser o tempo ideal de viagem (baseado na velocidade da via) somado a um leve atraso estocástico.
 - **`--traffic peak`**: Simula o **horário de pico**. Multiplicadores severos de atraso são aplicados, especialmente em vias expressas e rodovias, forçando os algoritmos a buscarem rotas de fuga por dentro de bairros.
 
-O tempo extra de engarrafamento de cada rua não é fixo; ele é sorteado usando uma **Distribuição Exponencial** baseada em um atraso médio esperado. Isso garante realismo: na maioria das vezes o atraso é pequeno, mas há uma chance matemática de ocorrerem gargalos severos (simulando acidentes ou semáforos quebrados), o que exige recálculos drásticos de rota.
+### Como o atraso é calculado matematicamente
+
+Para transformar o modelo determinístico em estocástico, o algoritmo aplica os seguintes passos em cada aresta durante a montagem do grafo:
+
+1. **Tempo Base (Cenário Ideal):** Calcula-se o tempo ideal de percurso dividindo a distância física da via pela sua velocidade máxima permitida.
+2. **Fatores de Severidade:** Assume-se um atraso base padrão de 5%. Esse valor é multiplicado por 4 em cenários de horário de pico e por 1.5 caso a via seja classificada como rodovia ou via arterial (sujeitas a maior volume de veículos).
+3. **Média Esperada ($\mu$):** Multiplica-se o Tempo Base pelo Fator de Severidade para obter a média do atraso esperado para aquela via específica.
+4. **Distribuição Exponencial:** O atraso real $x$ não é um valor fixo. Ele é sorteado utilizando a função densidade de probabilidade de uma distribuição exponencial:
+   $$f(x; \lambda) = \lambda e^{-\lambda x}$$
+   Onde a taxa de ocorrência $\lambda$ é o inverso da média ($\lambda = \frac{1}{\mu}$). O uso dessa curva garante que a maioria das vias sofra apenas lentidões leves, mas cria uma probabilidade matemática real de ocorrência de engarrafamentos severos, simulando acidentes ou bloqueios imprevisíveis.
+5. **Teto de Segurança:** O atraso $x$ é limitado a um teto máximo (ex: 120 minutos) para evitar tendências ao infinito.
+6. **Peso Final da Aresta:** O custo final repassado ao algoritmo (Dijkstra ou A*) é a soma do **Tempo Base + Atraso**. Caso o sorteio resulte em um atraso severo em uma via principal, o peso dispara, forçando o algoritmo a recalcular e buscar rotas alternativas mais rápidas pela vizinhança.
 
 ## Algoritmos disponíveis
 
