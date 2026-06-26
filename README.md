@@ -72,6 +72,7 @@ Para transformar o modelo determinístico em estocástico, o algoritmo aplica os
 - Dijkstra simples
 - Dijkstra com heap
 - A*
+- SPFA
 
 ## Saídas
 
@@ -80,6 +81,5 @@ Para transformar o modelo determinístico em estocástico, o algoritmo aplica os
 
 ## Pendências
 
-- Implementar um outro algoritmo de escolha do grupo
 - Implementar testes unitários
 - Melhorar desempenho
