@@ -10,6 +10,7 @@ from algorithms.dijkstra import Dijkstra
 from algorithms.dijkstra_heap import DijkstraHeap
 from algorithms.astar import AStar
 from algorithms.spfa import SPFA
+from algorithms.block_astar import BlockAStar
 from heuristics import CandidateHeuristics
 from visualization import animate_algorithm, create_folium_map
 
@@ -173,6 +174,8 @@ def create_solver(
         return AStar(adjacency, coordinates)
     if algorithm_name == "spfa":
         return SPFA(adjacency)
+    if algorithm_name == "block_astar":
+        return BlockAStar(adjacency, coordinates)
     raise ValueError(f"Unsupported algorithm: {algorithm_name}")
 
 
@@ -323,7 +326,7 @@ def parse_args():
     parser.add_argument(
         "--algorithm",
         "-a",
-        choices=["dijkstra", "dijkstra_heap", "astar", "spfa"],
+        choices=["dijkstra", "dijkstra_heap", "astar", "spfa", "block_astar"],
         default="dijkstra_heap",
         help="Shortest-path algorithm to visualize.",
     )
