@@ -333,7 +333,7 @@ def parse_args():
     parser.add_argument(
         "--output",
         "-o",
-        default="data/processed/dijkstra_animation.html",
+        default=None,
         help="Path to write the HTML animation.",
     )
     parser.add_argument(
@@ -356,7 +356,10 @@ def parse_args():
         default="off",
         help="Define o modelo de trânsito: 'off' (sem trânsito, rota mais curta), 'normal' (trânsito leve) ou 'peak' (horário de pico).",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.output is None:
+        args.output = f"data/processed/{args.algorithm}_animation.html"
+    return args
 
 
 def main():
