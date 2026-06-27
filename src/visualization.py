@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from IPython.display import HTML
 import numpy as np
+import folium
 
 plt.rcParams['animation.embed_limit'] = 500.0
 
@@ -158,3 +159,69 @@ def animate_algorithm(G, solver_instance, origin_graph_node, dest_graph_node, de
 
     plt.close()
     return HTML(ani.to_jshtml())
+
+
+def create_folium_map(G, origin_node, dest_node, candidate_nodes, best_path, idx_to_node, output_path="data/processed/mapa_interativo.html"):
+    """
+    Gera um mapa interativo utilizando Folium com a origem, destino, candidatos e a rota final.
+    """
+    
+    orig_y = G.nodes[origin_node]['y']
+    orig_x = G.nodes[origin_node]['x']
+    
+    dest_y = G.nodes[dest_node]['y']
+    dest_x = G.nodes[dest_node]['x']
+
+    m = folium.Map(location=[orig_y, orig_x], zoom_start=14, tiles="cartodbpositron")
+
+    folium.Marker(
+        [orig_y, orig_x], 
+        tooltip="Origem Real", 
+        icon=folium.Icon(color="green", icon="play")
+    ).add_to(m)
+    
+    folium.Marker(
+        [dest_y, dest_x], 
+        tooltip="Destino", 
+        icon=folium.Icon(color="red", icon="flag")
+    ).add_to(m)
+
+    for cand in candidate_nodes:
+        if cand == origin_node or cand == dest_node:
+            continue
+
+        cy = G.nodes[cand]['y']
+        cx = G.nodes[cand]['x']
+
+        folium.CircleMarker(
+            [cy, cx], 
+            radius=6, 
+            color="purple", 
+            fill=True, 
+            fill_opacity=0.7,
+            tooltip="Ponto de Embarque Candidato"
+        ).add_to(m)
+
+    if best_path:
+        path_coords = [(G.nodes[idx_to_node[n]]['y'], G.nodes[idx_to_node[n]]['x']) for n in best_path]
+        
+        best_cand_y = path_coords[0][0]
+        best_cand_x = path_coords[0][1]
+
+        folium.Marker(
+            [best_cand_y, best_cand_x], 
+            tooltip="Melhor Embarque", 
+            icon=folium.Icon(color="purple", icon="star")
+        ).add_to(m)
+
+        folium.PolyLine(
+            path_coords, 
+            color="#00BFFF", 
+            weight=5, 
+            opacity=0.8, 
+            tooltip="Rota Calculada"
+        ).add_to(m)
+
+    m.save(output_path)
+    
+    return output_path

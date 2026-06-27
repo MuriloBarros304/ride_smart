@@ -11,7 +11,7 @@ from algorithms.dijkstra_heap import DijkstraHeap
 from algorithms.astar import AStar
 from algorithms.spfa import SPFA
 from heuristics import CandidateHeuristics
-from visualization import animate_algorithm
+from visualization import animate_algorithm, create_folium_map
 
 
 def build_adjacency_from_graph(
@@ -415,6 +415,18 @@ def main():
         candidate_nodes, node_to_idx, solver, dest_idx
     )
 
+    folium_output = args.output.replace('.html', '_mapa.html')
+    
+    create_folium_map(
+        G=graph,
+        origin_node=origin_node,
+        dest_node=dest_node,
+        candidate_nodes=candidate_nodes,
+        best_path=best_path,
+        idx_to_node=idx_to_node,
+        output_path=folium_output
+    )
+
     total_length_m = 0.0
     total_base_time_s = 0.0
     total_traffic_time_s = 0.0
@@ -455,7 +467,8 @@ def main():
     else:
         print("Nenhuma rota válida encontrada.")
         
-    print(f"Animação Salva em:    {args.output}")
+    print(f"Animação (Matplotlib): {args.output}")
+    print(f"Mapa Interativo (Folium):  {folium_output}")
     print("="*40 + "\n")
 
 if __name__ == "__main__":
