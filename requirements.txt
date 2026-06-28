@@ -46,3 +46,4 @@ threadpoolctl
 traitlets
 urllib3
 wcwidth
+folium

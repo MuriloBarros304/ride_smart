@@ -1,19 +1,29 @@
 # RideSmart
 
-Projeto final para modelagem e análise de rotas urbanas com grafos. O foco é simular um cenário de mobilidade urbana com ponto de origem, destino e escolha de ponto de embarque dentro de um raio de caminhada.
+Projeto para modelagem e análise de rotas urbanas usando grafos e simulação simples de tráfego.
 
-## Estrutura
+**Descrição**
 
-- `src/`: código-fonte principal
-- `src/algorithms/`: implementações de algoritmos de caminho mínimo
-- `data/raw/`: dados de entrada (opcional)
-- `data/processed/`: saídas geradas (ex.: animações)
-- `tests/`: testes automatizados
+O projeto gera candidatos de ponto de embarque dentro de um raio de caminhada, avalia rotas usando diferentes algoritmos de caminho mínimo e produz visualizações (animações e mapas) para análise.
+
+**Integrantes**
+
+- Henrique Eduardo Costa Da Silva
+- João Victor Moura Lucas da Silva
+- Murilo de Lima Barros
+- Ramon Vinícius Ferreira de Souza
+
+## Estrutura do repositório
+
+- [src/](src/) — código-fonte principal
+- [src/algorithms/](src/algorithms/) — algoritmos de caminho mínimo
+- [data/processed/](data/processed/) — saídas geradas (ex.: animações, mapas)
+- [tests/](tests/) — testes automatizados
 
 ## Requisitos
 
 - Python 3.10+
-- Dependências listadas em `requirements.txt`
+- Dependências listadas em [requirements.txt](requirements.txt)
 
 Instalação das dependências:
 
@@ -21,11 +31,9 @@ Instalação das dependências:
 pip install -r requirements.txt
 ```
 
-## Uso
+## Uso rápido
 
-O script principal gera pontos aleatórios dentro de um raio de caminhada, escolhe o melhor ponto de embarque e gera uma animação do algoritmo selecionado.
-
-Exemplo de uso com busca dinâmica e trânsito no horário de pico:
+Exemplo de execução a partir do repositório (ajuste coordenadas conforme necessário):
 
 ```bash
 python3 src/main.py \
@@ -33,53 +41,50 @@ python3 src/main.py \
     --dest-lat -5.8121992 --dest-lon -35.2080217 \
     --walk-radius 100 --candidates 10 \
     --algorithm dijkstra_heap \
-    --min-angle 25 \
-    --traffic peak \
+    --traffic off \
     --output data/processed/dijkstra_animation.html
 ```
 
-Se usar `--place` toda a cidade será baixada. Para visualizações melhores e mais rápidas, prefira usar as coordenadas de latitude e longitude (que geram um raio dinâmico entre a origem e o destino).
+- Para usar um grafo local em GraphML: `--graphml caminho/para/grafo.graphml`.
+- Para baixar uma área inteira, use a flag `--place "Cidade, País"`.
 
-Também é possível usar um arquivo GraphML local:
+O arquivo de entrada e parâmetros principais são definidos em [src/main.py](src/main.py).
 
-```bash
-python3 src/main.py --graphml caminho/para/grafo.graphml
-```
+## Notebook interativo
 
-## Sistema de Trânsito Estocástico
+Há um notebook de exemplo para rodar e visualizar resultados interativamente: [notebook.ipynb](notebook.ipynb).
 
-O projeto possui um modelo probabilístico para simular as condições reais de tráfego urbano, controlado pela flag `--traffic`. O algoritmo altera dinamicamente os pesos das arestas (ruas) do grafo com base na escolha do usuário:
+## Sistema de trânsito (opções)
 
-- **`--traffic off`**: O sistema calcula a **rota física mais curta**. O peso das arestas é estritamente a distância em metros.
-- **`--traffic normal`**: O sistema calcula a **rota mais rápida**. O peso passa a ser o tempo ideal de viagem (baseado na velocidade da via) somado a um leve atraso estocástico.
-- **`--traffic peak`**: Simula o **horário de pico**. Multiplicadores severos de atraso são aplicados, especialmente em vias expressas e rodovias, forçando os algoritmos a buscarem rotas de fuga por dentro de bairros.
+O parâmetro `--traffic` controla uma simulação simples de variação de peso das arestas:
 
-### Como o atraso é calculado matematicamente
+- `off`: usa apenas distância (metros).
+- `normal`: aplica um atraso estocástico leve baseado em velocidade da via.
+- `peak`: simula horário de pico com atrasos maiores.
 
-Para transformar o modelo determinístico em estocástico, o algoritmo aplica os seguintes passos em cada aresta durante a montagem do grafo:
-
-1. **Tempo Base (Cenário Ideal):** Calcula-se o tempo ideal de percurso dividindo a distância física da via pela sua velocidade máxima permitida.
-2. **Fatores de Severidade:** Assume-se um atraso base padrão de 5%. Esse valor é multiplicado por 4 em cenários de horário de pico e por 1.5 caso a via seja classificada como rodovia ou via arterial (sujeitas a maior volume de veículos).
-3. **Média Esperada ($\mu$):** Multiplica-se o Tempo Base pelo Fator de Severidade para obter a média do atraso esperado para aquela via específica.
-4. **Distribuição Exponencial:** O atraso real $x$ não é um valor fixo. Ele é sorteado utilizando a função densidade de probabilidade de uma distribuição exponencial:
-   $$f(x; \lambda) = \lambda e^{-\lambda x}$$
-   Onde a taxa de ocorrência $\lambda$ é o inverso da média ($\lambda = \frac{1}{\mu}$). O uso dessa curva garante que a maioria das vias sofra apenas lentidões leves, mas cria uma probabilidade matemática real de ocorrência de engarrafamentos severos, simulando acidentes ou bloqueios imprevisíveis.
-5. **Teto de Segurança:** O atraso $x$ é limitado a um teto máximo (ex: 120 minutos) para evitar tendências ao infinito.
-6. **Peso Final da Aresta:** O custo final repassado ao algoritmo (Dijkstra ou A*) é a soma do **Tempo Base + Atraso**. Caso o sorteio resulte em um atraso severo em uma via principal, o peso dispara, forçando o algoritmo a recalcular e buscar rotas alternativas mais rápidas pela vizinhança.
+O comportamento exato está implementado no código que monta os pesos das arestas (veja os módulos em `src/`).
 
 ## Algoritmos disponíveis
 
-- Dijkstra simples
-- Dijkstra com heap
+- Dijkstra
+- Dijkstra com heap (mais eficiente)
 - A*
 - SPFA
 
 ## Saídas
 
-- Animação HTML com a exploração do algoritmo (padrão em `data/processed/`).
-- Resumo de métricas no terminal (Distância percorrida e Tempo estimado de viagem com ou sem atraso).
+- Animações HTML e mapas produzidos em [data/processed/](data/processed/).
+- Resumo de métricas impresso no terminal (distância e tempo estimado).
 
-## Pendências
+## Testes
 
-- Implementar testes unitários
+Execute os testes com:
+
+```bash
+pytest -q
+```
+
+## Histórico de Pendências
+
+- Implementar testes unitários (parcial)
 - Melhorar desempenho
