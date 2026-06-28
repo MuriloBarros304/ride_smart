@@ -1,10 +1,15 @@
 # RideSmart
 
-Projeto para modelagem e análise de rotas urbanas usando grafos e simulação simples de tráfego.
-
 **Descrição**
 
-O projeto gera candidatos de ponto de embarque dentro de um raio de caminhada, avalia rotas usando diferentes algoritmos de caminho mínimo e produz visualizações (animações e mapas) para análise.
+O projeto RideSmart aborda o cenário em que um usuário aceita caminhar uma
+distância máxima X a partir de uma origem A até um ponto de
+embarque otimizado P, visando mitigar congestionamentos,
+contornar barreiras geométricas ou acessar vias de tráfego
+rápido, reduzindo o tempo ou a distância total de deslocamento
+até o destino final B.
+
+O sistema gera candidatos de ponto de embarque dentro de um raio de caminhada, avalia rotas usando diferentes algoritmos de caminho mínimo e produz visualizações (animações e mapas) para análise.
 
 **Integrantes**
 
